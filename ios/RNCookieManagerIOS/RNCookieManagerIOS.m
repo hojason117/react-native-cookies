@@ -44,10 +44,16 @@ RCT_EXPORT_METHOD(
     [cookieProperties setObject:name forKey:NSHTTPCookieName];
     [cookieProperties setObject:value forKey:NSHTTPCookieValue];
     [cookieProperties setObject:domain forKey:NSHTTPCookieDomain];
-    [cookieProperties setObject:origin forKey:NSHTTPCookieOriginURL];
     [cookieProperties setObject:path forKey:NSHTTPCookiePath];
-    [cookieProperties setObject:version forKey:NSHTTPCookieVersion];
-    [cookieProperties setObject:expiration forKey:NSHTTPCookieExpires];
+    if (origin) {
+        [cookieProperties setObject:origin forKey:NSHTTPCookieOriginURL];
+    }
+    if (version) {
+        [cookieProperties setObject:version forKey:NSHTTPCookieVersion];
+    }
+    if (expiration) {
+        [cookieProperties setObject:expiration forKey:NSHTTPCookieExpires];
+    }
 
     NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
 
@@ -135,7 +141,7 @@ RCT_EXPORT_METHOD(
                     NSMutableDictionary *cookies = [NSMutableDictionary dictionary];
                     for(NSHTTPCookie *currentCookie in allCookies) {
                         if([currentCookie.domain containsString:topLevelDomain]) {
-                            [cookies setObject:currentCookie.value forKey:currentCookie.name];
+                            [cookies setObject:[self createCookieData:currentCookie] forKey:currentCookie.name];
                         }
                     }
                     resolve(cookies);
@@ -145,17 +151,7 @@ RCT_EXPORT_METHOD(
             reject(@"", NOT_AVAILABLE_ERROR_MESSAGE, nil);
         }
     } else {
-        NSMutableDictionary *cookies = [NSMutableDictionary dictionary];
-        for (NSHTTPCookie *c in [[NSHTTPCookieStorage sharedHTTPCookieStorage] cookiesForURL:url]) {
-            NSMutableDictionary *d = [NSMutableDictionary dictionary];
-            [d setObject:c.value forKey:@"value"];
-            [d setObject:c.name forKey:@"name"];
-            [d setObject:c.domain forKey:@"domain"];
-            [d setObject:c.path forKey:@"path"];
-            [d setObject:[self.formatter stringFromDate:c.expiresDate] forKey:@"expiresDate"];
-            [cookies setObject:d forKey:c.name];
-        }
-        resolve(cookies);
+        resolve([self createCookieList:[[NSHTTPCookieStorage sharedHTTPCookieStorage] cookiesForURL:url]]);
     }
 }
 
@@ -239,6 +235,11 @@ RCT_EXPORT_METHOD(
     [cookieData setObject:cookie.name forKey:@"name"];
     [cookieData setObject:cookie.domain forKey:@"domain"];
     [cookieData setObject:cookie.path forKey:@"path"];
+
+    if (cookie.expiresDate) {
+        [cookieData setObject:[self.formatter stringFromDate:cookie.expiresDate] forKey:@"expiresDate"];
+    }
+
     return cookieData;
 }
 
